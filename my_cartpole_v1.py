@@ -41,10 +41,11 @@ device = torch.device(
 
 
 #下面实现replay memory
-#
+#用namedtuple防止使用0，1，2，3这样的下标自己分不清
 Transition = namedtuple("Transition",("state","action","next_state","reward"))
 class ReplayMemory:
     def __init__(self, capacity):
+        #用的是双端队列，但只使用他的栈的功能
         self.memory = deque([],maxlen=capacity)
         self.capacity = capacity
 
@@ -58,6 +59,7 @@ class ReplayMemory:
         return len(self.memory)
 
 
+#神经网络构建
 class DQN(nn.Module):
     def __init__(self,n_observations,n_actions):
         super(DQN,self).__init__()
@@ -71,13 +73,13 @@ class DQN(nn.Module):
         return self.layer3(x)
 
 if __name__=="__main__":
-    BATCH_SIZE=128
-    GAMMA=0.99
-    EPSILON_START =0.9
-    EPSILON_END =0.01
-    EPSILON_DECAY=2500
-    LR =3e-4
-    TARGET_UPDATE=200
+    BATCH_SIZE=128          #
+    GAMMA=0.99              #
+    EPSILON_START =0.9      #
+    EPSILON_END =0.01       #
+    EPSILON_DECAY=2500      #epsilon的
+    LR =3e-4                #学习率
+    TARGET_UPDATE=200       #每C步更新目标网络
 
     n_actions =env.action_space.n
     state,info =env.reset()
