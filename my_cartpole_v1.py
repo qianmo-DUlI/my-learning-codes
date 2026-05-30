@@ -74,32 +74,34 @@ class DQN(nn.Module):
         return self.layer3(x)
 
 if __name__=="__main__":
-    BATCH_SIZE=128          #
-    GAMMA=0.99              #
-    EPSILON_START =0.9      #
-    EPSILON_END =0.01       #
-    EPSILON_DECAY=2500      #epsilon的
+    BATCH_SIZE=128          #每次训练所需要从replay memory里面采集的数量
+    GAMMA=0.99              #γ折扣因子
+    EPSILON_START =0.9      #初始的探索率
+    EPSILON_END =0.01       #最终的探索率
+    EPSILON_DECAY=2500      #探索率epsilon的衰减速度
     LR =3e-4                #学习率
     TARGET_UPDATE=200       #每C步更新目标网络
 
-    n_actions =env.action_space.n
-    state,info =env.reset()
-    n_observations=len(state)
-
-    policy_net=DQN(n_observations,n_actions).to(device)
-    target_net=DQN(n_observations,n_actions).to(device)
-    target_net.load_state_dict(policy_net.state_dict())
-
+    n_actions =env.action_space.n   #动作数这里是2
+    state,info =env.reset()         #重置环境到初始状态，返回初始状态和额外信息
+    n_observations=len(state)       #获取状态维度这里是
+    # 初始化双Q网络
+    policy_net=DQN(n_observations,n_actions).to(device) # 策略网络：实时更新，负责选动作
+    target_net=DQN(n_observations,n_actions).to(device) # 目标网络：延迟更新，负责计算目标Q值
+    target_net.load_state_dict(policy_net.state_dict()) # 初始参数完全相同
+    # 初始化优化器和经验回放池
     optimizer =optim.AdamW(policy_net.parameters(),lr=LR,amsgrad=True)
     memory =ReplayMemory(10000)
 
 
+    # 全局步数计数器，记录总交互步数
     steps_done =0
 
-
+    #ε-greedy
     def select_action(state):
         global steps_done
         sample = random.random()
+        #计算当前探索率
         eps_threshold = EPSILON_END + (EPSILON_START - EPSILON_END) * \
                         math.exp(-1. * steps_done / EPSILON_DECAY)
         steps_done += 1
@@ -110,6 +112,7 @@ if __name__=="__main__":
             return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
 
 
+    # 记录每个回合的坚持步数
     episode_durations = []
 
 
@@ -148,11 +151,13 @@ if __name__=="__main__":
         if len(memory) < BATCH_SIZE:
             return
         transitions = memory.sample(BATCH_SIZE)
-        batch = Transition(*zip(*transitions))
+        batch = Transition(*zip(*transitions))      #[(s1,a1,s1',r1), (s2,a2,s2',r2)] → ((s1,s2), (a1,a2), (s1',s2'), (r1,r2))
+
         non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
                                                 batch.next_state)), device=device, dtype=torch.bool)
         non_final_next_states = torch.cat([s for s in batch.next_state
                                            if s is not None])
+
         state_batch = torch.cat(batch.state)
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
@@ -200,6 +205,7 @@ if __name__=="__main__":
             memory.push(state, action, next_state, reward)
             state = next_state
             optimize_model()
+            #每TARGET_UPDATE步更新一次目标网络
             if steps_done % TARGET_UPDATE ==0:
                target_net.load_state_dict(policy_net.state_dict())
             if done:
