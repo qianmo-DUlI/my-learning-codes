@@ -49,6 +49,7 @@ class ReplayMemory:
         self.memory = deque([],maxlen=capacity)
         self.capacity = capacity
 
+        #将新的数据（这个数据是与环境交互时产生的）入栈
     def push(self,*args):
         self.memory.append(Transition(*args))
 
