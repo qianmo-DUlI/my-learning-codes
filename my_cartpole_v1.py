@@ -31,13 +31,13 @@ device = torch.device(
 
 
 #在测试中固定种子
-# seed = 42
-# random.seed(seed)
-# env.action_space.seed(seed=seed)
-# env.observation_space.seed(seed=seed)
-# torch.manual_seed(seed)
-# if torch.cuda.is_available():
-#     torch.cuda.manual_seed(seed)
+seed = 42
+random.seed(seed)
+env.action_space.seed(seed=seed)
+env.observation_space.seed(seed=seed)
+torch.manual_seed(seed)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(seed)
 
 
 #下面实现replay memory
@@ -105,9 +105,11 @@ if __name__=="__main__":
         eps_threshold = EPSILON_END + (EPSILON_START - EPSILON_END) * \
                         math.exp(-1. * steps_done / EPSILON_DECAY)
         steps_done += 1
+        #以1-ε概率选择最优
         if sample > eps_threshold:
             with torch.no_grad():
                 return policy_net(state).max(1).indices.view(1, 1)
+         #ε概率随机选一个
         else:
             return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
 
@@ -150,11 +152,13 @@ if __name__=="__main__":
     def optimize_model():
         if len(memory) < BATCH_SIZE:
             return
+        #随机从reply  memory选取BATCH_SIZE大的样本来训练主网络
         transitions = memory.sample(BATCH_SIZE)
         batch = Transition(*zip(*transitions))      #[(s1,a1,s1',r1), (s2,a2,s2',r2)] → ((s1,s2), (a1,a2), (s1',s2'), (r1,r2))
-
+        #标记下一个状态是否是终止状态，也就是生成一个布尔张量如果下一个状态是None，则是该位置是True
         non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
                                                 batch.next_state)), device=device, dtype=torch.bool)
+        #过滤掉None（终止状态没有下一个状态），把剩下的所有非终止状态拼接成一个可以直接输入神经网络的Batch张量。
         non_final_next_states = torch.cat([s for s in batch.next_state
                                            if s is not None])
 
@@ -221,6 +225,7 @@ if __name__=="__main__":
     plot_durations(show_result=True)
     plt.ioff()
     plt.show()
+    plt.savefig(r"photo/cartpole_c200_seed42.png")
 
 
 
