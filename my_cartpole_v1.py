@@ -214,7 +214,7 @@ if __name__=="__main__":
                target_net.load_state_dict(policy_net.state_dict())
             if done:
                 episode_durations.append(t + 1)
-                plot_durations()
+                #plot_durations()
                 # 添加控制台日志
                 if (i_episode + 1) % 10 == 0:
                     avg_duration = sum(episode_durations[-10:]) / 10
@@ -225,7 +225,6 @@ if __name__=="__main__":
     plot_durations(show_result=True)
     plt.ioff()
     plt.show()
-    plt.savefig(r"photo/cartpole_c200_seed42.png")
 
 
 
