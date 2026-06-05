@@ -16,9 +16,6 @@ import torch.nn.functional as F
 #env = gym.make("CartPole-v1",render_mode ="human")
 env = gym.make("CartPole-v1")
 
-is_ipython = 'inline' in matplotlib.get_backend()
-if is_ipython:
-    from IPython import display
 
 plt.ion()
 
@@ -85,11 +82,11 @@ if __name__=="__main__":
     n_actions =env.action_space.n   #动作数这里是2
     state,info =env.reset()         #重置环境到初始状态，返回初始状态和额外信息
     n_observations=len(state)       #获取状态维度这里是
-    # 初始化双Q网络
-    policy_net=DQN(n_observations,n_actions).to(device) # 策略网络：实时更新，负责选动作
-    target_net=DQN(n_observations,n_actions).to(device) # 目标网络：延迟更新，负责计算目标Q值
-    target_net.load_state_dict(policy_net.state_dict()) # 初始参数完全相同
-    # 初始化优化器和经验回放池
+    #初始化双Q网络
+    policy_net=DQN(n_observations,n_actions).to(device) #策略网络：实时更新，负责选动作
+    target_net=DQN(n_observations,n_actions).to(device) #目标网络：延迟更新，负责计算目标Q值
+    target_net.load_state_dict(policy_net.state_dict()) #初始参数完全相同
+    #初始化优化器和经验回放池
     optimizer =optim.AdamW(policy_net.parameters(),lr=LR,amsgrad=True)
     memory =ReplayMemory(10000)
 
@@ -109,7 +106,7 @@ if __name__=="__main__":
         if sample > eps_threshold:
             with torch.no_grad():
                 return policy_net(state).max(1).indices.view(1, 1)
-         #ε概率随机选一个
+        #ε概率随机选一个
         else:
             return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
 
@@ -139,12 +136,7 @@ if __name__=="__main__":
             plt.plot(means.numpy())
 
         plt.pause(0.001)
-        if is_ipython:
-            if not show_result:
-                display.display(plt.gcf())
-                display.clear_output(wait=True)
-            else:
-                display.display(plt.gcf())
+
 
 
     def optimize_model():
@@ -153,12 +145,22 @@ if __name__=="__main__":
         #随机从reply  memory选取BATCH_SIZE大的样本来训练主网络
         transitions = memory.sample(BATCH_SIZE)
         batch = Transition(*zip(*transitions))      #[(s1,a1,s1',r1), (s2,a2,s2',r2)] → ((s1,s2), (a1,a2), (s1',s2'), (r1,r2))
-        #标记下一个状态是否是终止状态，也就是生成一个布尔张量如果下一个状态是None，则是该位置是True
-        non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                                batch.next_state)), device=device, dtype=torch.bool)
-        #过滤掉None（终止状态没有下一个状态），把剩下的所有非终止状态拼接成一个可以直接输入神经网络的Batch张量。
-        non_final_next_states = torch.cat([s for s in batch.next_state
-                                           if s is not None])
+
+        # 初始化两个空列表
+        non_final_mask_list = []
+        non_final_next_states_list = []
+        #逐个遍历batch里的每一个next_state
+        for s in batch.next_state:
+            if s is not None:
+                #如果不是终止状态，标记为True，把状态加入列表
+                non_final_mask_list.append(True)
+                non_final_next_states_list.append(s)
+            else:
+                #如果是终止状态，标记为False
+                non_final_mask_list.append(False)
+        # 转成张量
+        non_final_mask = torch.tensor(non_final_mask_list, device=device, dtype=torch.bool)
+        non_final_next_states = torch.cat(non_final_next_states_list)
 
         state_batch = torch.cat(batch.state)
         action_batch = torch.cat(batch.action)
@@ -175,8 +177,8 @@ if __name__=="__main__":
         #Huber损失
         criterion = nn.SmoothL1Loss()
         loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
-        # 反向传播更新主网络参数w
-        optimizer.zero_grad()  # 清空上一步的梯度
+        #反向传播更新主网络参数w
+        optimizer.zero_grad()  #清空上一步的梯度
         loss.backward()  # 计算梯度
         torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)  # 梯度裁剪，防止梯度爆炸
         optimizer.step()  # 更新参数
