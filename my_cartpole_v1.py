@@ -120,11 +120,9 @@ if __name__=="__main__":
 
     def plot_durations(show_result=False):
         plt.figure(1)
-
         #---------
         plt.clf()
         #-------
-
         durations_t = torch.tensor(episode_durations, dtype=torch.float)
         if show_result:
             plt.title('Result')
@@ -134,13 +132,13 @@ if __name__=="__main__":
         plt.xlabel('Episode')
         plt.ylabel('Duration')
         plt.plot(durations_t.numpy())
-        # Take 100 episode averages and plot them too
+        #绘制100回合的平均
         if len(durations_t) >= 100:
             means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
             means = torch.cat((torch.zeros(99), means))
             plt.plot(means.numpy())
 
-        plt.pause(0.001)  # pause a bit so that plots are updated
+        plt.pause(0.001)
         if is_ipython:
             if not show_result:
                 display.display(plt.gcf())
@@ -165,27 +163,23 @@ if __name__=="__main__":
         state_batch = torch.cat(batch.state)
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
-
-
-        state_action_values = policy_net(state_batch).gather(1, action_batch)
-
-
+        #计算y_T
         next_state_values = torch.zeros(BATCH_SIZE, device=device)
         with torch.no_grad():
             next_state_values[non_final_mask] = target_net(non_final_next_states).max(1).values
-
         expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
+        # 计算当前的Q值     实际执行动作的价值
+        state_action_values = policy_net(state_batch).gather(1, action_batch)
 
+        #Huber损失
         criterion = nn.SmoothL1Loss()
         loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
-
-
-        optimizer.zero_grad()
-        loss.backward()
-
-        torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)
-        optimizer.step()
+        # 反向传播更新主网络参数w
+        optimizer.zero_grad()  # 清空上一步的梯度
+        loss.backward()  # 计算梯度
+        torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)  # 梯度裁剪，防止梯度爆炸
+        optimizer.step()  # 更新参数
 
 
     if torch.cuda.is_available() or torch.backends.mps.is_available():
