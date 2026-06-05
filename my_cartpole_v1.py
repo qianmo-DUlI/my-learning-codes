@@ -217,6 +217,9 @@ if __name__=="__main__":
 
     print('Complete')
     plot_durations(show_result=True)
+    #保存训练好的模型权重
+    #torch.save(policy_net.state_dict(), "cartpole_dqn_perfect.pth")
+    #print("模型权重已成功保存为: cartpole_dqn_perfect.pth")
     plt.ioff()
     plt.show()
 
