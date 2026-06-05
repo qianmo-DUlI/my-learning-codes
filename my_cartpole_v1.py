@@ -209,7 +209,7 @@ if __name__=="__main__":
             if done:
                 episode_durations.append(t + 1)
                 #plot_durations()
-                # 添加控制台日志
+                # 添加日志
                 if (i_episode + 1) % 10 == 0:
                     avg_duration = sum(episode_durations[-10:]) / 10
                     print(f"Episode [{i_episode + 1}/{num_episodes}], 最近10回合平均步数: {avg_duration:.1f}")
