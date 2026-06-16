@@ -28,13 +28,13 @@ device = torch.device(
 
 
 #在测试中固定种子
-seed = 42
-random.seed(seed)
-env.action_space.seed(seed=seed)
-env.observation_space.seed(seed=seed)
-torch.manual_seed(seed)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed(seed)
+# seed = 42
+# random.seed(seed)
+# env.action_space.seed(seed=seed)
+# env.observation_space.seed(seed=seed)
+# torch.manual_seed(seed)
+# if torch.cuda.is_available():
+#     torch.cuda.manual_seed(seed)
 
 
 #下面实现replay memory
@@ -69,6 +69,7 @@ class DQN(nn.Module):
         x=F.relu(self.layer1(x))
         x=F.relu(self.layer2(x))
         return self.layer3(x)
+
 
 if __name__=="__main__":
     BATCH_SIZE=128          #每次训练所需要从replay memory里面采集的数量
